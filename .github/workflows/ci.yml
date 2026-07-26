@@ -49,14 +49,23 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
+
+      -name: Scan repository for secrets
+       uses: gitleaks/gitleaks-action@v2
+       env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   containers:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix: { service: [api, web, workers] }
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +78,7 @@ jobs:
           format: cyclonedx-json
           output-file: sbom-${{ matrix.service }}.json
       - name: Vulnerability scan (Trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: platform-${{ matrix.service }}:ci
           exit-code: "1"
