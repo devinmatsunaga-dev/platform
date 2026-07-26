@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS runtime
+FROM python:3.13.14-slim-trixie AS runtime
 
 # Pin the uv version for reproducibility (bump deliberately)
 COPY --from=ghcr.io/astral-sh/uv:0.9.2 /uv /uvx /bin/
