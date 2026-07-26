@@ -1,0 +1,80 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - run: cd src/api && dotnet restore --locked-mode
+      - run: cd src/api && dotnet format --verify-no-changes
+      - run: cd src/api && dotnet build --no-restore
+      - run: dotnet test tests/api/Platform.Api.Tests.csproj --configuration Release
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc }
+      - run: corepack enable
+      - run: cd src/web && pnpm install --frozen-lockfile
+      - run: cd src/web && pnpm exec eslint . && pnpm exec prettier --check .
+      - run: cd src/web && pnpm run build
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd src/workers && uv sync --frozen
+      - run: cd src/workers && uv run ruff check .
+      - run: cd src/workers && uv run python -c "import main; print('ok')"
+
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc }
+      - run: corepack enable && cd src/web && pnpm install --frozen-lockfile
+      - run: cd src/web && pnpm exec commitlint --from origin/main --to HEAD
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+
+  containers:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { service: [api, web, workers] }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t platform-${{ matrix.service }}:ci src/${{ matrix.service }}
+      - name: SBOM (Syft / CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: platform-${{ matrix.service }}:ci
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.service }}.json
+      - name: Vulnerability scan (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: platform-${{ matrix.service }}:ci
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.json
