@@ -1,0 +1,16 @@
+{
+  "appHost": {
+    "path": "apphost.cs"
+  },
+
+
+  "packages": {
+    "Aspire.Hosting.PostgreSQL": "...",
+    "Aspire.Hosting.Redis": "...",
+    "Aspire.Hosting.Nats": "...",
+    "Aspire.Hosting.JavaScript": "...",
+    "Aspire.Hosting.Python": "..."
+  }
+
+
+}

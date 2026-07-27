@@ -1,0 +1,37 @@
+version: "3"
+
+tasks:
+  bootstrap:
+    desc: Restore all deps + install hooks
+    cmds: [bash eng/bootstrap.sh]
+
+  infra:up:
+    desc: Start baseline infra (Postgres/Timescale, Redis, NATS)
+    cmds: [docker compose -f deploy/docker-compose.dev.yml up -d]
+
+  infra:down:
+    cmds: [docker compose -f deploy/docker-compose.dev.yml down]
+
+  up:
+    desc: Start the full app via Aspire
+    cmds: ["cd src/apphost && aspire run"]
+
+  down:
+    cmds: [docker compose -f deploy/docker-compose.dev.yml down]
+
+  test:
+    cmds:
+      - dotnet test tests/api/Platform.Api.Tests.csproj --configuration Release
+      - cd src/workers && uv run pytest
+
+  lint:
+    cmds:
+      - cd src/api && dotnet format --verify-no-changes
+      - cd src/web && pnpm exec eslint .
+      - cd src/workers && uv run ruff check .
+
+  format:
+    cmds:
+      - cd src/api && dotnet format
+      - cd src/web && pnpm exec prettier --write .
+      - cd src/workers && uv run ruff format .

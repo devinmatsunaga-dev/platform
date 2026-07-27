@@ -1,0 +1,21 @@
+# common
+.git
+.env
+*.env
+!.env.example
+Dockerfile
+.dockerignore
+
+# .NET (src/api)
+bin/
+obj/
+
+# Node (src/web)
+node_modules/
+dist/
+
+# Python (src/workers)
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
